@@ -1,0 +1,18 @@
+# Node
+node_modules/
+dist/
+
+# Umgebungsvariablen – enthält u.a. den Supabase-URL/Anon-Key, gehört NIE ins Repo
+.env
+.env.*
+!.env.example
+
+# Tauri / Rust (apps/desktop)
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

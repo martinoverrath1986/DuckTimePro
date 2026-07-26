@@ -1,0 +1,24 @@
+[package]
+name = "ducktime-pro"
+version = "0.1.0"
+description = "DuckTime Pro – Zeiterfassung (Tauri-Hülle um den Web-Code aus apps/web)"
+edition = "2021"
+
+# Siehe https://tauri.app/develop/configuration-files/ – dieser Abschnitt wird von
+# `cargo` gebraucht, damit `build.rs` beim Kompilieren automatisch ausgeführt wird.
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Release-Profil bewusst schlank halten (kleineres .msi, etwas längere Kompilierzeit) –
+# für eine reine Desktop-Hülle ohne eigene Rust-Geschäftslogik ist das unkritisch.
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

@@ -1,0 +1,62 @@
+name: Windows-Build (Tauri)
+
+# Baut bei jedem Push nach "main" automatisch eine echte Windows-.msi/.exe von DuckTime Pro –
+# auf einem echten windows-latest-Runner (kein Cross-Compiling vom Mac nötig, siehe README M4).
+# Ergebnis liegt danach als herunterladbares Artefakt am jeweiligen Actions-Lauf (Tab "Actions"
+# im Repo -> Lauf anklicken -> Abschnitt "Artifacts" ganz unten).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rust-Toolchain einrichten
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust-Build-Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+
+      # Die .env-Datei ist bewusst NICHT im Repo (siehe .gitignore) – der Web-Build braucht sie
+      # aber, um sich mit Supabase zu verbinden. Dafür in den Repo-Settings unter
+      # "Settings -> Secrets and variables -> Actions" zwei Secrets anlegen:
+      #   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY  (siehe apps/web/.env.example)
+      - name: Supabase-Konfiguration (.env) fürs Web-Build schreiben
+        shell: bash
+        working-directory: apps/web
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Web-Abhängigkeiten installieren
+        working-directory: apps/web
+        run: npm install
+
+      - name: Tauri-CLI installieren
+        working-directory: apps/desktop
+        run: npm install
+
+      - name: Windows-App bauen (.msi/.exe)
+        working-directory: apps/desktop
+        run: npm run tauri build
+
+      - name: Build-Artefakte hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuckTime-Pro-Windows
+          path: |
+            apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+            apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

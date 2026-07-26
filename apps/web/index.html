@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="de" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckTime Pro</title>
+</head>
+<body class="h-full bg-slate-50 text-slate-800 flex flex-col font-sans">
+
+    <!-- Test-Hinweisbanner (wird in M2 durch echten Sync-Status ersetzt) -->
+    <div id="preview-banner" class="bg-slate-900 text-white text-xs sm:text-sm px-4 py-2 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-flask text-duck-500"></i>
+            <span><strong>M1-Build</strong> – Vite-Migration, gleiches Verhalten wie die Browser-Vorschau. Läuft nur lokal (Daten bleiben im Browser, Beispieldaten vorbelegt).</span>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openInfoModal()" class="underline hover:text-duck-400 whitespace-nowrap">Was ist neu?</button>
+            <button onclick="document.getElementById('preview-banner').remove()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-duck-100 rounded-xl flex items-center justify-center border border-duck-500 shadow-xs">
+                    <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="14" r="6" fill="#facc15"/>
+                        <path d="M16 14h4l-2 3h-3z" fill="#f97316"/>
+                        <circle cx="13.5" cy="12.5" r="1" fill="#1e293b"/>
+                        <path d="M10 7L11 3h2l1 4-2 1z" fill="#ec4899"/>
+                        <path d="M12 5l1-3h1l1 3-2 1z" fill="#8b5cf6"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                        DuckTime
+                        <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-duck-100 text-duck-700">Pro</span>
+                    </h1>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="openSettingsModal()" title="Einstellungen" class="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition">
+                    <i class="fa-solid fa-gear"></i>
+                </button>
+                <button onclick="openModal()" class="bg-duck-500 hover:bg-duck-600 text-slate-900 font-semibold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-2 text-sm">
+                    <i class="fa-solid fa-plus"></i> Neuer Eintrag
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex space-x-8 overflow-x-auto">
+            <button onclick="switchTab('calendar')" id="tab-calendar" class="py-4 px-1 border-b-2 font-medium text-sm border-duck-500 text-duck-600 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-calendar-days"></i> Kalender
+            </button>
+            <button onclick="switchTab('employers')" id="tab-employers" class="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-briefcase"></i> Arbeitgeber
+            </button>
+            <button onclick="switchTab('stats')" id="tab-stats" class="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-chart-pie"></i> Statistiken & Export
+            </button>
+            <button onclick="switchTab('sync')" id="tab-sync" class="py-4 px-1 border-b-2 font-medium text-sm border-transparent text-slate-500 hover:text-slate-700 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-cloud"></i> Sync & Backup
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:px-6 lg:px-8 overflow-y-auto">
+
+        <!-- TAB: Kalender -->
+        <section id="view-calendar" class="space-y-6">
+            <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-4">
+                    <h2 id="calendar-month-year" class="text-xl font-bold text-slate-900">Monat Jahr</h2>
+                    <div class="flex items-center space-x-1 border border-slate-200 rounded-xl p-1 bg-slate-50">
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-white rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button onclick="resetToCurrentMonth()" class="px-3 py-1 text-sm font-medium text-slate-700 hover:bg-white rounded-lg transition">Heute</button>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-white rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="calendar-month-summary" class="text-sm font-medium text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+                    Gesamt: 0 Std. | 0.00 €
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <label class="text-sm font-medium text-slate-600 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-slate-400"></i> Filter
+                </label>
+                <select id="calendar-employer-filter" onchange="onCalendarFilterChange()" class="w-full sm:w-auto border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-duck-500 bg-white">
+                    <option value="all">Alle Arbeitgeber</option>
+                </select>
+            </div>
+
+            <div class="flex flex-wrap gap-4 text-xs text-slate-500 px-1">
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-duck-500 inline-block"></span> Arbeit (Arbeitgeberfarbe)</div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-sky-500 inline-block"></span> Urlaub</div>
+                <div class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-rose-600 inline-block"></span> Krank</div>
+            </div>
+
+            <!-- Kalender Grid -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+                <div class="grid grid-cols-7 bg-slate-50 border-b border-slate-200 text-center text-xs font-semibold text-slate-500 py-3">
+                    <div>Mo</div><div>Di</div><div>Mi</div><div>Do</div><div>Fr</div><div>Sa</div><div>So</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 auto-rows-fr bg-slate-200 gap-px"></div>
+            </div>
+        </section>
+
+        <!-- TAB: Arbeitgeber -->
+        <section id="view-employers" class="space-y-6 hidden">
+            <div class="flex justify-between items-center">
+                <h2 class="text-xl font-bold text-slate-900">Arbeitgeber verwalten</h2>
+                <button onclick="openEmployerModal()" class="bg-slate-900 hover:bg-slate-800 text-white font-medium px-4 py-2 rounded-xl text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-plus"></i> Arbeitgeber hinzufügen
+                </button>
+            </div>
+            <div id="employer-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </section>
+
+        <!-- TAB: Statistiken & Export -->
+        <section id="view-stats" class="space-y-6 hidden">
+
+            <div class="bg-white p-4 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+                <h2 class="text-lg font-bold text-slate-900">Auswertungsmonat</h2>
+                <div class="flex items-center space-x-1 border border-slate-200 rounded-xl p-1 bg-slate-50">
+                    <button onclick="changeStatsMonth(-1)" class="p-2 hover:bg-white rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span id="stats-month-label" class="px-3 py-1 text-sm font-medium text-slate-700">Monat Jahr</span>
+                    <button onclick="changeStatsMonth(1)" class="p-2 hover:bg-white rounded-lg text-slate-600 transition"><i class="fa-solid fa-chevron-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Gesamt-Übersicht über alle Arbeitgeber -->
+            <div class="bg-slate-900 text-white p-6 rounded-2xl shadow-xs">
+                <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Gesamt – alle Arbeitgeber zusammen</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                        <p class="text-xs text-slate-400">Ist-Stunden</p>
+                        <p id="stat-overall-hours" class="text-xl font-bold mt-0.5">0.0 h</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Verdienst</p>
+                        <p id="stat-overall-earnings" class="text-xl font-bold text-duck-500 mt-0.5">0.00 €</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Überstunden-Saldo</p>
+                        <p id="stat-overall-overtime" class="text-xl font-bold mt-0.5">0.0 h</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">Einträge gesamt (alle Zeit)</p>
+                        <p id="stat-total-entries" class="text-xl font-bold mt-0.5">0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pro Arbeitgeber getrennte Auswertung -->
+            <div>
+                <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">Pro Arbeitgeber</h3>
+                <div id="stats-employer-cards" class="space-y-4"></div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 space-y-4">
+                <h3 class="text-lg font-bold text-slate-900">Monats-Export (Excel)</h3>
+                <p class="text-sm text-slate-600">Exportiere deine Arbeitszeiten, Urlaubs- und Krankheitstage nach Arbeitgeber gefiltert für den oben gewählten Monat.</p>
+                <div class="flex flex-wrap gap-4 items-center">
+                    <select id="export-employer-select" class="border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-duck-500">
+                        <option value="all">Alle Arbeitgeber</option>
+                    </select>
+                    <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium px-5 py-2 rounded-xl text-sm transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-excel"></i> Excel-Report herunterladen
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB: Sync & Backup -->
+        <section id="view-sync" class="space-y-6 hidden">
+
+            <div class="bg-amber-50 border border-amber-200 text-amber-900 rounded-2xl p-4 text-sm flex gap-3">
+                <i class="fa-solid fa-circle-info mt-0.5"></i>
+                <div>
+                    <p class="font-semibold mb-1">Echter Datenabgleich aktiv (M3)</p>
+                    <p>Gekoppelte Geräte (siehe "Cloud-Identität" unten) gleichen jetzt Kalendereinträge, Arbeitgeber und Einstellungen tatsächlich ab. Beim App-Start wird automatisch synchronisiert; über den Button unten geht es auch jederzeit manuell.</p>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 space-y-4">
+                <h3 class="text-lg font-bold text-slate-900">Datenabgleich <span id="sync-last-badge" class="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full align-middle">noch nie synchronisiert</span></h3>
+                <p class="text-sm text-slate-600">Lädt eigene Änderungen hoch und holt neue Änderungen von gekoppelten Geräten.</p>
+                <button onclick="handleRunSync()" id="btn-run-sync" class="bg-duck-500 text-slate-900 font-semibold px-4 py-2 rounded-xl text-sm hover:bg-duck-600 transition">
+                    <i class="fa-solid fa-rotate mr-1"></i> Jetzt synchronisieren
+                </button>
+                <div id="data-sync-status" class="text-xs text-slate-500 pt-1"></div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-900">Lokales Backup</h3>
+                    <p class="text-sm text-slate-600">Sichere deine Daten als JSON-Datei auf deinem Gerät oder spiele ein Backup ein.</p>
+                    <div class="flex gap-4">
+                        <button onclick="exportJSON()" class="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-800 transition"><i class="fa-solid fa-download mr-2"></i> Exportieren</button>
+                        <label class="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-200 transition cursor-pointer">
+                            <i class="fa-solid fa-upload mr-2"></i> Importieren <input type="file" id="import-file" accept=".json" onchange="importJSON(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-xs border border-slate-200 space-y-4">
+                    <h3 class="text-lg font-bold text-slate-900">Cloud-Identität <span id="sync-identity-badge" class="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full align-middle">wird geprüft…</span></h3>
+                    <p class="text-sm text-slate-600">Erzeuge auf diesem Gerät eine PIN und gib sie auf deinem zweiten Gerät ein, um beide zu verbinden.</p>
+
+                    <div class="space-y-2">
+                        <button onclick="handleCreatePairingCode()" id="btn-create-pin" class="bg-duck-500 text-slate-900 font-semibold px-4 py-2 rounded-xl text-sm hover:bg-duck-600 transition">
+                            <i class="fa-solid fa-key mr-1"></i> PIN für dieses Gerät erzeugen
+                        </button>
+                        <div id="pairing-code-display" class="hidden text-center bg-slate-50 border border-slate-200 rounded-xl py-3">
+                            <div class="text-3xl font-mono font-bold tracking-widest text-slate-900" id="pairing-code-value">------</div>
+                            <div class="text-xs text-slate-500 mt-1" id="pairing-code-expiry"></div>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4 space-y-2">
+                        <label class="text-sm text-slate-600 block">PIN von einem anderen Gerät eingeben:</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="pairing-code-input" placeholder="6-stellige PIN" maxlength="6" inputmode="numeric" class="flex-1 border border-slate-300 rounded-xl px-4 py-2 text-sm focus:outline-duck-500">
+                            <button onclick="handleRedeemPairingCode()" id="btn-redeem-pin" class="bg-slate-900 text-white font-semibold px-4 py-2 rounded-xl text-sm hover:bg-slate-800 transition">Koppeln</button>
+                        </div>
+                    </div>
+
+                    <div id="sync-status" class="text-xs text-slate-500 pt-1"></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal: Eintrag Hinzufügen / Bearbeiten -->
+    <div id="entry-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 id="modal-title" class="text-lg font-bold text-slate-900">Neuer Eintrag</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="entry-form" onsubmit="saveEntry(event)" class="space-y-4">
+                <input type="hidden" id="entry-id">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Art des Eintrags</label>
+                    <div class="grid grid-cols-3 gap-2" id="entry-type-toggle">
+                        <button type="button" data-type="work" onclick="setEntryType('work')" class="entry-type-btn px-2 py-2 rounded-xl text-sm font-medium border">Arbeit</button>
+                        <button type="button" data-type="vacation" onclick="setEntryType('vacation')" class="entry-type-btn px-2 py-2 rounded-xl text-sm font-medium border">Urlaub</button>
+                        <button type="button" data-type="sick" onclick="setEntryType('sick')" class="entry-type-btn px-2 py-2 rounded-xl text-sm font-medium border">Krank</button>
+                    </div>
+                    <input type="hidden" id="entry-type" value="work">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Arbeitgeber</label>
+                    <select id="entry-employer" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500 bg-white"></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Datum</label>
+                    <input type="date" id="entry-date" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                </div>
+
+                <div id="entry-work-fields" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Von</label>
+                            <input type="time" id="entry-start" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Bis</label>
+                            <input type="time" id="entry-end" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Unbezahlte Pause (Minuten)</label>
+                        <input type="number" id="entry-break" value="0" min="0" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                    </div>
+                </div>
+
+                <div id="entry-absence-fields" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Dauer</label>
+                    <select id="entry-duration" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500 bg-white">
+                        <option value="full">Ganzer Tag</option>
+                        <option value="half">Halber Tag</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Notiz / Tätigkeit</label>
+                    <textarea id="entry-note" rows="2" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500"></textarea>
+                </div>
+                <div class="flex justify-between items-center pt-2">
+                    <button type="button" id="delete-entry-btn" onclick="deleteCurrentEntry()" class="text-rose-600 hover:text-rose-700 text-sm font-medium hidden"><i class="fa-solid fa-trash mr-1"></i> Löschen</button>
+                    <div class="flex space-x-2 ml-auto">
+                        <button type="button" onclick="closeModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50">Abbrechen</button>
+                        <button type="submit" class="px-4 py-2 bg-duck-500 hover:bg-duck-600 text-slate-900 font-semibold rounded-xl text-sm shadow-xs">Speichern</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Tages-Übersicht (fixt Mehrfacheintrag-Bug) -->
+    <div id="day-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 border border-slate-200 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 id="day-modal-title" class="text-lg font-bold text-slate-900">Einträge am TT.MM.JJJJ</h3>
+                <button onclick="closeDayModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="day-modal-list" class="space-y-2"></div>
+            <button onclick="addEntryFromDayModal()" class="w-full border border-dashed border-slate-300 rounded-xl py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition">
+                <i class="fa-solid fa-plus mr-1"></i> Weiteren Eintrag für diesen Tag hinzufügen
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal: Arbeitgeber Hinzufügen / Bearbeiten -->
+    <div id="employer-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 border border-slate-200 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 id="employer-modal-title" class="text-lg font-bold text-slate-900">Arbeitgeber hinzufügen</h3>
+                <button onclick="closeEmployerModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="employer-form" onsubmit="saveEmployer(event)" class="space-y-4">
+                <input type="hidden" id="employer-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Name des Arbeitgebers</label>
+                    <input type="text" id="employer-name" required placeholder="z.B. Hauptjob oder Minijob" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Beschäftigungsart</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" data-wagetype="hourly" onclick="setWageType('hourly')" class="wage-type-btn px-2 py-2 rounded-xl text-sm font-medium border">Stundenlohn</button>
+                        <button type="button" data-wagetype="salary" onclick="setWageType('salary')" class="wage-type-btn px-2 py-2 rounded-xl text-sm font-medium border">Festgehalt</button>
+                    </div>
+                    <input type="hidden" id="employer-wagetype" value="hourly">
+                </div>
+
+                <div id="employer-hourly-field">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Stundenlohn (€)</label>
+                    <input type="number" step="0.01" id="employer-wage" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                </div>
+                <div id="employer-salary-field" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Monatsgehalt (€ brutto)</label>
+                    <input type="number" step="0.01" id="employer-salary" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Soll-Stunden / Woche</label>
+                        <input type="number" step="0.5" min="0" id="employer-target-hours" required value="40" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Urlaub (Tage/Jahr)</label>
+                        <input type="number" step="1" min="0" id="employer-vacation-days" required value="20" class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                    </div>
+                </div>
+
+                <div class="bg-sky-50 border border-sky-200 rounded-xl p-3">
+                    <label class="flex items-center gap-2 text-sm font-medium text-sky-900">
+                        <input type="checkbox" id="employer-is-minijob" class="w-4 h-4">
+                        Dies ist ein Minijob (Verdienstgrenze überwachen)
+                    </label>
+                    <p class="text-xs text-sky-700 mt-1 ml-6">Zeigt in den Statistiken einen Fortschrittsbalken zur Minijob-Grenze (Wert in den Einstellungen).</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Farbe</label>
+                    <input type="color" id="employer-color" value="#eab308" class="w-full h-10 border border-slate-300 rounded-xl px-2 py-1 cursor-pointer bg-white">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeEmployerModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50">Abbrechen</button>
+                    <button type="submit" class="px-4 py-2 bg-slate-900 text-white font-medium rounded-xl text-sm shadow-xs hover:bg-slate-800">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Einstellungen -->
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4 border border-slate-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900">Einstellungen</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="settings-form" onsubmit="saveSettings(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase tracking-wider mb-1">Minijob-Verdienstgrenze (€/Monat)</label>
+                    <input type="number" step="1" min="0" id="settings-minijob-limit" required class="w-full border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-duck-500">
+                    <p class="text-xs text-slate-400 mt-1">Gesetzlicher Wert 2026: 603 €. Wird jährlich angepasst – hier editierbar, damit du selbst aktuell bleibst.</p>
+                </div>
+                <p class="text-xs text-slate-500">Wochenarbeitszeit, Urlaubsanspruch und Minijob-Kennzeichnung stellst du direkt beim jeweiligen Arbeitgeber ein (Tab "Arbeitgeber"), da Hauptjob und Minijob meist unterschiedliche Werte haben.</p>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeSettingsModal()" class="px-4 py-2 border border-slate-300 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50">Abbrechen</button>
+                    <button type="submit" class="px-4 py-2 bg-duck-500 hover:bg-duck-600 text-slate-900 font-semibold rounded-xl text-sm shadow-xs">Speichern</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Was ist neu -->
+    <div id="info-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl space-y-4 border border-slate-200 max-h-[85vh] overflow-y-auto">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900">Was ist neu (M1)?</h3>
+                <button onclick="closeInfoModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <p class="text-sm text-slate-500">Meilenstein 1: die Browser-Vorschau wurde in ein richtiges Vite-Projekt migriert. Funktional identisch, technisch die Basis für M2 (Supabase) bis M5 (Windows/Android-Pakete).</p>
+            <ul class="text-sm text-slate-700 space-y-3 list-none">
+                <li class="flex gap-2"><i class="fa-solid fa-cubes text-slate-900 mt-1"></i><span><strong>Code in Module aufgeteilt:</strong> Kalender, Arbeitgeber, Einträge, Statistiken, Export, Sync sind jetzt eigene TypeScript-Dateien statt einem einzigen Inline-Skript.</span></li>
+                <li class="flex gap-2"><i class="fa-solid fa-box text-slate-900 mt-1"></i><span><strong>CDN-Skripte durch echte Pakete ersetzt:</strong> Tailwind, FontAwesome und der Excel-Export laufen jetzt komplett offline gebündelt – Voraussetzung für die spätere Windows-/Android-App ohne Internet.</span></li>
+                <li class="flex gap-2"><i class="fa-solid fa-database text-slate-900 mt-1"></i><span><strong>Speicher-Abstraktion eingezogen:</strong> Alle Daten laufen jetzt über ein "StorageAdapter"-Interface. Aktuell nur lokal (Browser), aber genau die Stelle, an der in M3 echtes Offline-SQLite eingehängt wird, ohne den Rest der App anzufassen.</span></li>
+            </ul>
+            <button onclick="closeInfoModal()" class="w-full px-4 py-2 bg-slate-900 text-white font-medium rounded-xl text-sm hover:bg-slate-800">Verstanden</button>
+        </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
