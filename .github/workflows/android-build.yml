@@ -23,11 +23,13 @@ jobs:
         with:
           node-version: 22
 
-      - name: Java (JDK 17) einrichten
+      # Capacitor 8s Android-Projektvorlage kompiliert mit Java-Sprachlevel 21 (javac bricht mit
+      # "invalid source release: 21" ab, wenn ein älteres JDK installiert ist).
+      - name: Java (JDK 21) einrichten
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: '21'
 
       - name: Gradle-Build-Cache
         uses: gradle/actions/setup-gradle@v4
