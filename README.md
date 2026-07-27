@@ -77,8 +77,8 @@ apps/web/
 
 - **M2:** Supabase-Schema + PIN-Kopplung – siehe Abschnitt unten (abgeschlossen, End-to-End getestet)
 - **M3:** Offline-SQLite + echte Sync-Engine – siehe Abschnitt unten (abgeschlossen, End-to-End getestet)
-- **M4 (aktueller Stand):** Tauri-Windows-Paket + GitHub-Actions-Build – siehe Abschnitt unten
-- **M5:** Capacitor-Android-Paket
+- **M4:** Tauri-Windows-Paket + GitHub-Actions-Build – siehe Abschnitt unten (abgeschlossen, End-to-End getestet)
+- **M5 (aktueller Stand):** Capacitor-Android-Paket – siehe Abschnitt unten
 - **M6:** Politur, Tests, Geräte-Verwaltung
 
 ## Meilenstein M2 – Supabase-Schema + PIN-Kopplung
@@ -284,3 +284,110 @@ npm run tauri dev     # startet die App als natives Fenster (auf dem Mac: macOS-
   und installiert werden
 - Automatische GitHub-Releases statt reiner Workflow-Artefakte (ließe sich später leicht ergänzen,
   z.B. mit `tauri-apps/tauri-action`)
+
+## Meilenstein M5 – Capacitor-Android-Paket
+
+Neu: `apps/mobile/` – eine [Capacitor](https://capacitorjs.com) 8-Hülle, die denselben
+unveränderten Web-Code aus `apps/web` als Android-App verpackt (`.apk`). Analog zu M4 baut eine
+**GitHub-Actions-Pipeline** (`.github/workflows/android-build.yml`) die `.apk` automatisch bei
+jedem Push – auf einem Linux-Runner mit vorinstalliertem Android-SDK, kein Android Studio auf
+deinem Mac nötig.
+
+**Dieselbe Vereinfachung wie bei M4:** Der ursprüngliche Plan sah für Android ein natives
+SQLite-Plugin (`@capacitor-community/sqlite`) vor. Auch das ist **nicht nötig** – die
+sql.js/WASM-Lösung aus M3 läuft unverändert auch in Capacitors Android-WebView weiter.
+
+**Was für Android tatsächlich angepasst werden musste:** der Excel-/Backup-Export. Ein normaler
+Browser-Download (wie er im Web und in der Tauri-App funktioniert) gibt es in einer
+Android-WebView nicht. `src/export.ts` unterscheidet deshalb jetzt per
+`Capacitor.isNativePlatform()`:
+- **Web/Tauri (unverändert):** `XLSX.writeFile()` bzw. Blob-Download wie bisher.
+- **Android (neu):** Datei wird ins App-Cache-Verzeichnis geschrieben
+  (`@capacitor/filesystem`) und über den nativen Android-**Teilen**-Dialog angeboten
+  (`@capacitor/share`) – der Nutzer wählt dort z.B. "In Dateien speichern", "Per E-Mail senden"
+  oder eine Cloud-App. `importJSON()` (Backup einlesen) brauchte keine Änderung – der normale
+  `<input type="file">`-Dateiauswahldialog funktioniert in der Android-WebView bereits von Haus aus.
+
+### Neue/geänderte Dateien
+```
+apps/mobile/
+  package.json              # @capacitor/core, @capacitor/android, @capacitor/cli
+  capacitor.config.ts        # appId, webDir -> ../web/dist
+  android/                   # WIRD ERST DURCH DICH ERZEUGT, siehe "Einrichtung" unten –
+                              # existiert in diesem Lieferumfang noch NICHT
+.github/workflows/android-build.yml  # baut die .apk bei jedem Push nach "main"
+apps/web/src/export.ts       # Android-Zweig für Excel-/JSON-Export (siehe oben)
+apps/web/src/shims.d.ts       # Typ-Stubs für @capacitor/core, /filesystem, /share
+apps/web/package.json        # neue Abhängigkeiten: @capacitor/core, /filesystem, /share
+```
+
+### Wichtig: einen Schritt musst du selbst ausführen
+
+Anders als bei M4 kann ich das native Android-Projekt (`apps/mobile/android/`) **nicht selbst
+erzeugen** – das braucht die Capacitor-CLI mit echtem `npm install` (Netzwerk auf `npm` und das
+Android-SDK sind in meiner Cloud-Sandbox beide nicht erreichbar, wie schon bei M1–M4). Das ist ein
+einmaliger Schritt bei dir im Terminal:
+
+```bash
+cd "/Users/martinoverrath/Desktop/KI Projekte/DuckTimePro/ducktime-pro/apps/mobile"
+npm install
+npx cap add android
+```
+
+Das erzeugt den Ordner `apps/mobile/android/` (ein vollständiges Android-Studio-Projekt inkl.
+`gradlew`). Danach ganz normal committen und pushen:
+
+```bash
+cd "/Users/martinoverrath/Desktop/KI Projekte/DuckTimePro/ducktime-pro"
+git add apps/mobile
+git commit -m "M5: Capacitor-Android-Projekt hinzugefügt"
+git push
+```
+
+Der Push startet automatisch den Actions-Lauf "Android-Build (Capacitor)" – die zwei Secrets
+(`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) sind ja aus M4 schon hinterlegt, dafür ist nichts
+Neues nötig.
+
+### Build abholen
+
+GitHub → Repo → Tab **"Actions"** → Lauf **"Android-Build (Capacitor)"** anklicken → unten
+**"Artifacts"** → `DuckTime-Pro-Android` herunterladen (ZIP mit der `.apk` drin).
+
+**Auf dem Android-Handy installieren:**
+1. Die `.apk` aufs Handy übertragen (z.B. per E-Mail an dich selbst, Google Drive, USB-Kabel, o.ä.)
+2. Auf die `.apk`-Datei tippen → Android fragt vermutlich nach der Berechtigung **"Apps aus
+   unbekannten Quellen installieren"** für die App, mit der du die Datei öffnest (z.B. "Dateien"
+   oder Gmail) – das ist normal, da es kein Play-Store-Download ist (privates Sideloading)
+3. Installieren, App öffnen
+
+Das ist ein **Debug-Build** (unsigniert bzw. mit Gradles automatischem Debug-Schlüssel signiert) –
+für privates Sideloading auf dem eigenen Handy völlig ausreichend, entspricht der unsignierten
+`.msi` bei Windows (SmartScreen-Warnung dort = vergleichbare Android-Warnung hier).
+
+### Zum vollständigen Abnahmetest von M5 (laut Plan)
+
+- App installieren, öffnen → Kalender wird angezeigt
+- Über den Sync-Tab mit deiner bestehenden Cloud-Identität **per PIN koppeln** (genau wie bei den
+  Browser-Profilen in M2 bzw. der Windows-App in M4)
+- Flugmodus an, einen Eintrag anlegen, Flugmodus aus, synchronisieren → Eintrag sollte auf den
+  anderen gekoppelten Geräten auftauchen
+- Excel-Export testen → Android-Teilen-Dialog sollte erscheinen
+
+### Was in dieser Sandbox verifiziert wurde – und was nicht
+
+Wie immer: kein Netzwerkzugriff auf `npm`/Android-SDK/GitHub in dieser Cloud-Sandbox, daher kein
+echter `npm install`/`npx cap add android`/Gradle-Build hier möglich. Verifiziert wurde:
+- `package.json` (apps/mobile, apps/web) → gültiges JSON
+- `android-build.yml` → gültiges YAML
+- `export.ts`/`shims.d.ts` → `tsc --noEmit` läuft weiterhin fehlerfrei durch
+
+Der native Android-Build läuft zum ersten Mal auf dem GitHub-Actions-Runner, sobald du
+`apps/mobile/android/` erzeugt und gepusht hast – das ist damit auch hier der erste echte Test.
+
+### Offene Punkte für später (nicht Teil von M5)
+
+- Signierter Release-Build + Play-Store-Veröffentlichung (laut Plan für rein private Nutzung
+  bewusst nicht nötig – Sideloading reicht)
+- App-Icon für Android (aktuell Capacitors Standard-Icon; ließe sich mit denselben
+  Enten-PNGs aus `apps/desktop/src-tauri/icons/` per `npx capacitor-assets generate` erzeugen)
+- Push-Benachrichtigungen bei Sync von einem anderen Gerät (nicht Teil des ursprünglichen Plans)

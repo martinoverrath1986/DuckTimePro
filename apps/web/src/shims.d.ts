@@ -12,6 +12,10 @@ declare module 'xlsx' {
     book_append_sheet: (wb: unknown, ws: unknown, name: string) => void;
   };
   export function writeFile(wb: unknown, filename: string): void;
+  // Für M5 (Capacitor/Android) genutzt: liefert den Datei-Inhalt als String statt ihn direkt
+  // als Browser-Download auszulösen (nötig, weil es in einer Android-WebView keinen normalen
+  // Datei-Download gibt – siehe export.ts).
+  export function write(wb: unknown, opts: { type: 'base64'; bookType?: string }): string;
 }
 
 // Vite liest .env-Variablen normalerweise über eigene Typen (vite/client, per node_modules
@@ -138,4 +142,49 @@ declare module 'sql.js' {
 declare module '*.wasm?url' {
   const url: string;
   export default url;
+}
+
+// --- Ab hier: Minimale Stubs für Capacitor (Meilenstein M5, Android-Hülle in apps/mobile).
+// Decken jeweils nur ab, was export.ts tatsächlich benutzt. Nach "npm install" liefern die
+// echten Pakete ihre vollständigeren Typen mit (gleiches Prinzip wie bei den Stubs oben).
+declare module '@capacitor/core' {
+  export const Capacitor: {
+    isNativePlatform(): boolean;
+    getPlatform(): string;
+  };
+}
+
+declare module '@capacitor/filesystem' {
+  export enum Directory {
+    Cache = 'CACHE',
+    Documents = 'DOCUMENTS',
+    Data = 'DATA',
+    External = 'EXTERNAL',
+    ExternalStorage = 'EXTERNAL_STORAGE'
+  }
+  export interface WriteFileResult {
+    uri: string;
+  }
+  export const Filesystem: {
+    writeFile(options: {
+      path: string;
+      data: string;
+      directory?: Directory;
+      encoding?: string;
+    }): Promise<WriteFileResult>;
+  };
+}
+
+declare module '@capacitor/share' {
+  export interface ShareResult {
+    activityType?: string;
+  }
+  export const Share: {
+    share(options: {
+      title?: string;
+      text?: string;
+      url?: string;
+      dialogTitle?: string;
+    }): Promise<ShareResult>;
+  };
 }

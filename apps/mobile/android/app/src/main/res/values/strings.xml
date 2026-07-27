@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">DuckTime Pro</string>
+    <string name="title_activity_main">DuckTime Pro</string>
+    <string name="package_name">de.overrath.ducktime</string>
+    <string name="custom_url_scheme">de.overrath.ducktime</string>
+</resources>

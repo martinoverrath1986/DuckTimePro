@@ -3,8 +3,31 @@ import { byId } from './dom';
 import { state, saveEmployer, saveEntry } from './state';
 import { calcEntryHours, calcEntryEarnings, getEffectiveEmployerData } from './calc';
 import { renderCalendar } from './calendar';
+import { Capacitor } from '@capacitor/core';
+import { Filesystem, Directory } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
 
-export function exportToExcel(): void {
+// Meilenstein M5 (Capacitor/Android): ein normaler Browser-Download (Blob + <a download>,
+// bzw. XLSX.writeFile()) funktioniert in Android-WebViews nicht zuverlässig – es gibt dort
+// keinen "Downloads"-Ordner-Zugriff wie im Desktop-Browser. Stattdessen: Datei ins App-eigene
+// Cache-Verzeichnis schreiben und über den nativen Android-"Teilen"-Dialog anbieten (der Nutzer
+// wählt dort z.B. "In Dateien speichern", "Per E-Mail senden", "Google Drive" o.ä.).
+// Im Browser und in der Tauri-Windows-App (Capacitor.isNativePlatform() === false) bleibt der
+// bisherige, bereits getestete Weg unverändert.
+async function saveAndShareOnNative(filename: string, base64Data: string): Promise<void> {
+  const written = await Filesystem.writeFile({
+    path: filename,
+    data: base64Data,
+    directory: Directory.Cache
+  });
+  await Share.share({
+    title: filename,
+    url: written.uri,
+    dialogTitle: 'Datei speichern oder teilen'
+  });
+}
+
+export async function exportToExcel(): Promise<void> {
   const selectedEmpId = byId<HTMLSelectElement>('export-employer-select').value;
   const year = state.statsDate.getFullYear();
   const month = state.statsDate.getMonth();
@@ -41,15 +64,32 @@ export function exportToExcel(): void {
   const ws = XLSX.utils.json_to_sheet(data);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Arbeitszeiten');
-  XLSX.writeFile(wb, `DuckTime_Export_${year}_${month + 1}.xlsx`);
+  const filename = `DuckTime_Export_${year}_${month + 1}.xlsx`;
+
+  if (Capacitor.isNativePlatform()) {
+    const base64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+    await saveAndShareOnNative(filename, base64);
+  } else {
+    XLSX.writeFile(wb, filename);
+  }
 }
 
-export function exportJSON(): void {
-  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state));
-  const dlAnchorElem = document.createElement('a');
-  dlAnchorElem.setAttribute('href', dataStr);
-  dlAnchorElem.setAttribute('download', 'ducktime_backup.json');
-  dlAnchorElem.click();
+export async function exportJSON(): Promise<void> {
+  const filename = 'ducktime_backup.json';
+  const jsonStr = JSON.stringify(state);
+
+  if (Capacitor.isNativePlatform()) {
+    // btoa erwartet Latin1 – über encodeURIComponent/unescape sicher aus UTF-8 kodieren
+    // (Notizen/Namen können Umlaute o.ä. enthalten).
+    const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+    await saveAndShareOnNative(filename, base64);
+  } else {
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(jsonStr);
+    const dlAnchorElem = document.createElement('a');
+    dlAnchorElem.setAttribute('href', dataStr);
+    dlAnchorElem.setAttribute('download', filename);
+    dlAnchorElem.click();
+  }
 }
 
 export function importJSON(event: Event): void {

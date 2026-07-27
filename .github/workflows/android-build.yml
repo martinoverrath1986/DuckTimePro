@@ -1,0 +1,73 @@
+name: Android-Build (Capacitor)
+
+# Baut bei jedem Push nach "main" automatisch eine Android-.apk von DuckTime Pro –
+# auf einem Linux-Runner mit vorinstalliertem Android-SDK (kein eigenes Android-Studio-Setup
+# auf dem Mac nötig, siehe README M5). Ergebnis liegt danach als herunterladbares Artefakt am
+# jeweiligen Actions-Lauf (Tab "Actions" -> Lauf anklicken -> "Artifacts" ganz unten).
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      # Capacitor CLI 8 verlangt Node >=22 (npx cap sync/add würde mit Node 20 sonst mit
+      # "fatal: The Capacitor CLI requires NodeJS >=22.0.0" abbrechen).
+      - name: Node.js einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Java (JDK 17) einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Gradle-Build-Cache
+        uses: gradle/actions/setup-gradle@v4
+
+      # Wie beim Windows-Build (windows-build.yml): .env ist bewusst nicht im Repo, die zwei
+      # Secrets müssen unter Settings -> Secrets and variables -> Actions bereits angelegt sein.
+      - name: Supabase-Konfiguration (.env) fürs Web-Build schreiben
+        shell: bash
+        working-directory: apps/web
+        run: |
+          echo "VITE_SUPABASE_URL=${{ secrets.VITE_SUPABASE_URL }}" > .env
+          echo "VITE_SUPABASE_ANON_KEY=${{ secrets.VITE_SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Web-Abhängigkeiten installieren
+        working-directory: apps/web
+        run: npm install
+
+      - name: Web-App bauen
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Capacitor-Abhängigkeiten installieren
+        working-directory: apps/mobile
+        run: npm install
+
+      # Kopiert den frischen Web-Build (apps/web/dist) in das native Android-Projekt und
+      # aktualisiert dessen Capacitor-Plugin-Abhängigkeiten (Filesystem, Share, ...).
+      - name: Android-Projekt synchronisieren
+        working-directory: apps/mobile
+        run: npx cap sync android
+
+      - name: Android-App bauen (.apk)
+        working-directory: apps/mobile/android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug
+
+      - name: Build-Artefakt hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuckTime-Pro-Android
+          path: apps/mobile/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

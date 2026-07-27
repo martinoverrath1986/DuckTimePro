@@ -1,0 +1,6 @@
+node_modules/
+
+# Das android/-Verzeichnis selbst WIRD eingecheckt (Capacitor-Konvention: das native
+# Android-Studio-Projekt gehört ins Repo, inkl. gradlew). Es bringt beim Erzeugen per
+# "npx cap add android" sein eigenes android/.gitignore für Build-Artefakte
+# (android/app/build/, android/.gradle/, local.properties, ...) automatisch mit.
