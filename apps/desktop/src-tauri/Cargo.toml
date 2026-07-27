@@ -10,7 +10,10 @@ edition = "2021"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# "devtools" bewusst temporär aktiv (siehe README M4-Fehlersuche): erlaubt Rechtsklick ->
+# "Untersuchen"/F12 auch im Release-Build, damit sich echte Konsolenfehler in der fertigen
+# .msi anschauen lassen. Vor einer "richtigen" Veröffentlichung später wieder entfernen.
+tauri = { version = "2", features = ["devtools"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
